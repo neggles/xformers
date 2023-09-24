@@ -136,6 +136,9 @@ def get_flash_attention_extensions(cuda_version: int, extra_compile_args):
         if num >= 90 and cuda_version < 1108:
             continue
         nvcc_archs_flags.append(f"-gencode=arch=compute_{num},code=sm_{num}")
+        # add SM90a for H100 (Thor, whatever that means to nVidia)
+        if num == 90:
+            nvcc_archs_flags.append(f"-gencode=arch=compute_{num}a,code=sm_{num}a")
         if arch.endswith("+PTX"):
             nvcc_archs_flags.append(f"-gencode=arch=compute_{num},code=compute_{num}")
     if not nvcc_archs_flags:
@@ -244,9 +247,10 @@ def get_extensions():
         nvcc_flags += shlex.split(os.getenv("NVCC_FLAGS", ""))
         cuda_version = get_cuda_version(CUDA_HOME)
         if cuda_version >= 1102:
+            nvcc_threads = os.getenv("NVCC_THREADS", "4")
             nvcc_flags += [
                 "--threads",
-                "4",
+                nvcc_threads,
                 "--ptxas-options=-v",
             ]
         if sys.platform == "win32":
@@ -302,6 +306,7 @@ def get_extensions():
                 "XFORMERS_BUILD_TYPE",
                 "XFORMERS_ENABLE_DEBUG_ASSERTIONS",
                 "NVCC_FLAGS",
+                "NVCC_THREADS",
                 "XFORMERS_PACKAGE_FROM",
             ]
         },
