@@ -30,9 +30,7 @@ from torch.utils.cpp_extension import (
 )
 
 this_dir = os.path.dirname(__file__)
-pt_attn_compat_file_path = os.path.join(
-    this_dir, "xformers", "ops", "fmha", "torch_attention_compat.py"
-)
+pt_attn_compat_file_path = os.path.join(this_dir, "xformers", "ops", "fmha", "torch_attention_compat.py")
 
 # Define the module name
 module_name = "torch_attention_compat"
@@ -141,13 +139,9 @@ def get_cuda_version(cuda_dir) -> int:
 def get_hip_version(rocm_dir) -> Optional[str]:
     hipcc_bin = "hipcc" if rocm_dir is None else os.path.join(rocm_dir, "bin", "hipcc")
     try:
-        raw_output = subprocess.check_output(
-            [hipcc_bin, "--version"], universal_newlines=True
-        )
+        raw_output = subprocess.check_output([hipcc_bin, "--version"], universal_newlines=True)
     except Exception as e:
-        print(
-            f"hip installation not found: {e} ROCM_PATH={os.environ.get('ROCM_PATH')}"
-        )
+        print(f"hip installation not found: {e} ROCM_PATH={os.environ.get('ROCM_PATH')}")
         return None
     for line in raw_output.split("\n"):
         if "HIP version" in line:
@@ -191,13 +185,9 @@ def get_flash_attention_nvcc_archs_flags(cuda_version: int):
         if num >= 90 and cuda_version < 1108:
             continue
         suffix = match.group("suffix")
-        nvcc_archs_flags.append(
-            f"-gencode=arch=compute_{num}{suffix},code=sm_{num}{suffix}"
-        )
+        nvcc_archs_flags.append(f"-gencode=arch=compute_{num}{suffix},code=sm_{num}{suffix}")
         if match.group("ptx") is not None:
-            nvcc_archs_flags.append(
-                f"-gencode=arch=compute_{num}{suffix},code=compute_{num}{suffix}"
-            )
+            nvcc_archs_flags.append(f"-gencode=arch=compute_{num}{suffix},code=compute_{num}{suffix}")
 
     return nvcc_archs_flags
 
@@ -265,14 +255,10 @@ def get_extensions():
 
     sources = glob.glob(os.path.join(extensions_dir, "**", "*.cpp"), recursive=True)
     source_cuda = glob.glob(os.path.join(extensions_dir, "**", "*.cu"), recursive=True)
-    fmha_source_cuda = glob.glob(
-        os.path.join(extensions_dir, "**", "fmha", "**", "*.cu"), recursive=True
-    )
+    fmha_source_cuda = glob.glob(os.path.join(extensions_dir, "**", "fmha", "**", "*.cu"), recursive=True)
     exclude_files = ["small_k.cu", "decoder.cu", "attention_cutlass_rand_uniform.cu"]
     fmha_source_cuda = [
-        c
-        for c in fmha_source_cuda
-        if not any(exclude_file in c for exclude_file in exclude_files)
+        c for c in fmha_source_cuda if not any(exclude_file in c for exclude_file in exclude_files)
     ]
 
     source_hip = glob.glob(
@@ -295,9 +281,7 @@ def get_extensions():
     # If we force 'torch CUTLASS switch' then setup will fail when no compatibility
     if (
         xformers_pt_cutlass_attn is None or xformers_pt_cutlass_attn == "1"
-    ) and attn_compat_module.is_pt_cutlass_compatible(
-        force=xformers_pt_cutlass_attn == "1"
-    ):
+    ) and attn_compat_module.is_pt_cutlass_compatible(force=xformers_pt_cutlass_attn == "1"):
         source_cuda = list(set(source_cuda) - set(fmha_source_cuda))
 
     cutlass_dir = os.path.join(this_dir, "third_party", "cutlass", "include")
@@ -328,7 +312,7 @@ def get_extensions():
     use_pt_flash = False
 
     if (
-        (torch.cuda.is_available() and ((CUDA_HOME is not None)))
+        (torch.cuda.is_available() and (CUDA_HOME is not None))
         or os.getenv("FORCE_CUDA", "0") == "1"
         or os.getenv("TORCH_CUDA_ARCH_LIST", "") != ""
     ):
@@ -351,7 +335,7 @@ def get_extensions():
         if cuda_version >= 1102:
             nvcc_flags += [
                 "--threads",
-                "4",
+                os.getenv("NVCC_THREADS", "4"),
                 "--ptxas-options=-v",
             ]
         if sys.platform == "win32":
@@ -370,18 +354,14 @@ def get_extensions():
         nvcc_archs_flags = get_flash_attention_nvcc_archs_flags(cuda_version)
         if not nvcc_archs_flags:
             if xformers_pt_flash_attn == "1":
-                raise ValueError(
-                    "Current Torch Flash-Attention is not available on this device"
-                )
+                raise ValueError("Current Torch Flash-Attention is not available on this device")
         else:
             # By default, we try to link to torch internal flash attention implementation
             # and silently switch to local flash attention build if no compatibility
             # If we force 'torch FA switch' then setup will fail when no compatibility
             if (
                 xformers_pt_flash_attn is None or xformers_pt_flash_attn == "1"
-            ) and attn_compat_module.is_pt_flash_compatible(
-                force=xformers_pt_flash_attn == "1"
-            ):
+            ) and attn_compat_module.is_pt_flash_compatible(force=xformers_pt_flash_attn == "1"):
                 flash_version = torch.nn.attention._get_flash_version() + "-pt"
                 use_pt_flash = True
             else:
@@ -412,9 +392,7 @@ def get_extensions():
 
         extension = CUDAExtension
         sources += source_hip_cu
-        include_dirs += [
-            Path(this_dir) / "xformers" / "csrc" / "attention" / "hip_fmha"
-        ]
+        include_dirs += [Path(this_dir) / "xformers" / "csrc" / "attention" / "hip_fmha"]
 
         include_dirs += [
             Path(this_dir)
@@ -425,9 +403,7 @@ def get_extensions():
             / "xformers_fmha"
         ]
 
-        include_dirs += [
-            Path(this_dir) / "third_party" / "composable_kernel_tiled" / "include"
-        ]
+        include_dirs += [Path(this_dir) / "third_party" / "composable_kernel_tiled" / "include"]
 
         generator_flag = []
 
@@ -477,6 +453,7 @@ def get_extensions():
                 "XFORMERS_ENABLE_DEBUG_ASSERTIONS",
                 "NVCC_FLAGS",
                 "XFORMERS_PACKAGE_FROM",
+                "NVCC_THREADS",
             ]
         },
     }
@@ -507,9 +484,7 @@ class BuildExtensionWithExtraFiles(BuildExtension):
     def build_extensions(self) -> None:
         super().build_extensions()
         for filename, content in self.xformers_build_metadata.items():
-            with open(
-                os.path.join(self.build_lib, self.pkg_name, filename), "w+"
-            ) as fp:
+            with open(os.path.join(self.build_lib, self.pkg_name, filename), "w+") as fp:
                 fp.write(content)
 
     def copy_extensions_to_source(self) -> None:
